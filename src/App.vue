@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { FetchBalancesDto, TokenClassKey, type CreateTokenClassDto } from '@gala-chain/api'
-import { GalachainConnectClient, TokenClient } from '@gala-chain/connect'
+// import { FetchBalancesDto, TokenClassKey, type CreateTokenClassDto } from '@jonathan-testing/api'
+import {
+  FetchBalancesDto,
+  FetchBalancesWithPaginationDto,
+  TokenClassKey,
+  type CreateTokenClassDto
+} from '@gala-chain/api'
 import { RouterLink, RouterView } from 'vue-router'
-import type { ValidationError } from 'class-validator'
+import { GalachainConnectClient, TokenClient } from '@gala-chain/connect'
 
 const isConnected = ref(false)
 const message = ref('')
 
-const client = new GalachainConnectClient('')
+const client = new GalachainConnectClient(
+  'https://int-galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/token-contract'
+)
 const tokenClient = new TokenClient(client)
 
 const tokenClassKey = new TokenClassKey()
@@ -46,8 +53,8 @@ async function mintToken() {
     // const foo = { category: 'UNIT', collection: '' } as any as FetchBalancesDto
     // const signed = (await client.provider?.getSigner())?.signMessage(JSON.stringify(foo))
     // console.log(`Signed: ${signed}`)
-    const test = await tokenClient.FetchBalancesWithTokenMetadata({ limit: 500 })
-    message.value = `Token minted successfully! ${test}`
+    const test = await tokenClient.MintTokenWithAllowance({})
+    // message.value = `Token minted successfully! ${test}`
   } catch (error) {
     message.value = 'Failed to mint the token!'
     console.error(error)
