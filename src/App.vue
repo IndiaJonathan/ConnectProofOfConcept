@@ -1,63 +1,129 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-// import { FetchBalancesDto, TokenClassKey, type CreateTokenClassDto } from '@jonathan-testing/api'
-import {
-  FetchBalancesDto,
-  FetchBalancesWithPaginationDto,
-  TokenClassKey,
-  type CreateTokenClassDto
-} from '@gala-chain/api'
-import { RouterLink, RouterView } from 'vue-router'
-import { GalachainConnectClient, TokenClient } from '@gala-chain/connect'
+import { ref, type Ref } from 'vue';
+import { GalachainConnectClient, TokenClient, WalletUtils } from '@gala-chain/connect';
 
-const isConnected = ref(false)
-const message = ref('')
+const isConnected = ref(false);
+const message = ref('');
+const connectedUser: Ref<string | null> = ref('');
 
 const client = new GalachainConnectClient(
-  'https://int-galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/token-contract'
-)
-const tokenClient = new TokenClient(client)
+  'https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/token-contract'
+);
 
-const tokenClassKey = new TokenClassKey()
-tokenClassKey.additionalKey = 'foo'
-tokenClassKey.category = 'foo2'
-tokenClassKey.collection = 'foo3'
-tokenClassKey.type = 'foo4'
+//TODO: Use public key contract and methods
+// const client2 = new GalachainConnectClient(
+//   'https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/public-key-contract'
+// );
+const tokenClient = new TokenClient(client);
 
 async function connectToMetaMask() {
   try {
-    const connectionResult = await client.connectToMetaMask()
-    isConnected.value = true
-    message.value = `Connected! User: ${connectionResult}`
+    client.on('accountChanged', (account) => {
+      console.log(`Account changed, ${account}`);
+      message.value = `Account Changed! User: ${account}`;
+      connectedUser.value = account;
+    });
+    const connectionResult = await client.connectToMetaMask();
+    isConnected.value = true;
+    message.value = `Connected! User: ${connectionResult}`;
+    connectedUser.value = connectionResult;
   } catch (error) {
-    message.value = 'Failed to connect!'
-    console.error(error)
+    message.value = 'Failed to connect!';
+    console.error(error);
   }
 }
 
-async function mintToken() {
-  if (!isConnected.value) {
-    message.value = 'Please connect to MetaMask first.'
-    return
+async function generateWallet() {
+  const wallet = await WalletUtils.createAndRegisterRandomWallet(
+    'https://dex-api-platform-dex-stage-gala.gala.com/v1/CreateHeadlessWallet'
+  );
+  message.value = `Wallet Generated and registered. Address: ${wallet.ethAddress}.\n Private key in console (this is not super secure, please only use this for testing)`;
+  console.log(wallet.privateKey);
+}
+
+async function getBalances() {
+  const user = connectedUser.value;
+  if (!isConnected.value || !user) {
+    message.value = 'Please connect to MetaMask first.';
+    return;
   }
 
   try {
-    // const test = await tokenClient.FetchBalances({
-    //   name: 'foo',
-    //   description: 'test',
-    //   image: 'foo.png',
-    //   tokenClass: tokenClassKey,
-    //   symbol: ''
-    // } as any)
-    // message.value = `Token minted successfully! ${test}`
-    // const foo = { category: 'UNIT', collection: '' } as any as FetchBalancesDto
-    // const signed = (await client.provider?.getSigner())?.signMessage(JSON.stringify(foo))
-    // console.log(`Signed: ${signed}`)
-    const test = await tokenClient.MintTokenWithAllowance({})
-    // message.value = `Token minted successfully! ${test}`
+    let res = await tokenClient.FetchBalances({
+      owner: user
+    });
+    if (res.Data) {
+      message.value = JSON.stringify(res.Data);
+    } else {
+      message.value = `Error fetching balances. ${res.Message}`;
+    }
   } catch (error) {
-    message.value = 'Failed to mint the token!'
-    console.error(error)
+    message.value = 'Failed to get balances!';
+    console.error(error);
+  }
+}
+
+async function transferToken() {
+  if (!isConnected.value) {
+    message.value = 'Please connect to MetaMask first.';
+    return;
+  }
+  //TODO
+}
+
+async function lockToken() {
+  if (!isConnected.value) {
+    message.value = 'Please connect to MetaMask first.';
+    return;
+  }
+
+  try {
+    let res = await tokenClient.LockToken({
+      quantity: '1',
+      tokenInstance: {
+        collection: 'GALA',
+        category: 'Unit',
+        additionalKey: 'none',
+        instance: '0',
+        type: 'none'
+      }
+    });
+    if (res.Status === 1) {
+      message.value = `Token locked successfully! ${JSON.stringify(res.Data)}`;
+    } else {
+      message.value = `Error locking token. Code: ${res.ErrorCode}, ${res.Message}`;
+    }
+  } catch (error) {
+    message.value = 'Failed to lock the token!';
+    console.error(error);
+  }
+}
+async function burnToken() {
+  if (!isConnected.value) {
+    message.value = 'Please connect to MetaMask first.';
+    return;
+  }
+
+  try {
+    //todo: this should default to the selected user, not this
+    let test = await tokenClient.BurnTokens({
+      tokenInstances: [
+        {
+          quantity: '1',
+          tokenInstanceKey: {
+            collection: 'GALA',
+            category: 'Unit',
+            additionalKey: 'none',
+            instance: '0',
+            type: 'none'
+          }
+        }
+      ]
+    });
+    message.value = `Token locked successfully! ${JSON.stringify(test.Data)}`;
+  } catch (error) {
+    message.value = 'Failed to lock the token!';
+    console.error(error);
   }
 }
 </script>
@@ -65,72 +131,10 @@ async function mintToken() {
 <template>
   <div>
     <button @click="connectToMetaMask">Connect to MetaMask</button>
-    <button @click="mintToken" :disabled="!isConnected">Mint Token</button>
+    <button @click="generateWallet">Generate Wallet</button>
+    <button @click="getBalances" :disabled="!isConnected">Get Balances</button>
+    <button @click="lockToken" :disabled="!isConnected">Lock Token</button>
+    <button @click="burnToken" :disabled="!isConnected">Burn Token</button>
     <p>{{ message }}</p>
-    <RouterView />
   </div>
 </template>
-
-<style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
-}
-</style>
