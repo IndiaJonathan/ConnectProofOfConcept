@@ -18,14 +18,14 @@ const tokenClient = new TokenClient(client);
 
 async function connectToMetaMask() {
   try {
+    const connectionResult = await client.connectToMetaMask();
+    isConnected.value = true;
+    message.value = `Connected! User: ${connectionResult}`;
     client.on('accountChanged', (account) => {
       console.log(`Account changed, ${account}`);
       message.value = `Account Changed! User: ${account}`;
       connectedUser.value = account;
     });
-    const connectionResult = await client.connectToMetaMask();
-    isConnected.value = true;
-    message.value = `Connected! User: ${connectionResult}`;
     connectedUser.value = connectionResult;
   } catch (error) {
     message.value = 'Failed to connect!';
@@ -39,6 +39,22 @@ async function generateWallet() {
   );
   message.value = `Wallet Generated and registered. Address: ${wallet.ethAddress}.\n Private key in console (this is not super secure, please only use this for testing)`;
   console.log(wallet.privateKey);
+}
+
+async function createTokenClass() {
+  const foo = await tokenClient.CreateTokenClass({
+    name: 'test',
+    description: 'test2',
+    image: 'foo.png',
+    symbol: 'foo',
+    tokenClass: {
+      additionalKey: 'key',
+      category: 'category',
+      collection: 'colection',
+      type: 'type'
+    }
+  });
+  return foo;
 }
 
 async function getBalances() {
@@ -135,6 +151,7 @@ async function burnToken() {
     <button @click="getBalances" :disabled="!isConnected">Get Balances</button>
     <button @click="lockToken" :disabled="!isConnected">Lock Token</button>
     <button @click="burnToken" :disabled="!isConnected">Burn Token</button>
+    <button @click="createTokenClass" :disabled="!isConnected">Generate Class</button>
     <p>{{ message }}</p>
   </div>
 </template>
