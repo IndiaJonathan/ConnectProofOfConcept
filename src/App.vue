@@ -1,157 +1,278 @@
 <script setup lang="ts">
 import { ref, type Ref } from 'vue';
-import { GalachainConnectClient, TokenClient, WalletUtils } from '@gala-chain/connect';
+import { type Row } from './helpers/utils';
+import { GalaChainResponse } from '@gala-chain/api';
+import {
+  burnTokens,
+  connectToMetaMask,
+  createTokenClass,
+  fetchTokenClasses,
+  fetchTokenClassesWithPagination,
+  fetchBalances,
+  initialize,
+  isConnected,
+  lockToken,
+  updateTokenClass,
+  generateWallet,
+  createdUser,
+  grantAllowance,
+  refreshAllowances,
+  fullAllowanceCheck,
+  fetchAllowances,
+  deleteAllowances,
+  requestMint,
+  highThroughputMint,
+  fetchMintRequests,
+  mintToken,
+  mintTokenWithAllowance,
+  batchMintToken,
+  lockTokens,
+  unlockToken,
+  unlockTokens,
+  getProfile,
+  registerUser,
+  registerEthUser
+} from './services/ExampleMetamask';
 
-const isConnected = ref(false);
 const message = ref('');
-const connectedUser: Ref<string | null> = ref('');
 
-const client = new GalachainConnectClient(
-  'https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/token-contract'
-);
+// const client = new GalachainClient(
+//   'https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/token-contract'
+// );
 
 //TODO: Use public key contract and methods
 // const client2 = new GalachainConnectClient(
 //   'https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/public-key-contract'
 // );
-const tokenClient = new TokenClient(client);
 
-async function connectToMetaMask() {
-  try {
-    const connectionResult = await client.connectToMetaMask();
-    isConnected.value = true;
-    message.value = `Connected! User: ${connectionResult}`;
-    client.on('accountChanged', (account) => {
-      console.log(`Account changed, ${account}`);
-      message.value = `Account Changed! User: ${account}`;
-      connectedUser.value = account;
-    });
-    connectedUser.value = connectionResult;
-  } catch (error) {
-    message.value = 'Failed to connect!';
-    console.error(error);
-  }
-}
+initialize();
 
-async function generateWallet() {
-  const wallet = await WalletUtils.createAndRegisterRandomWallet(
-    'https://dex-api-platform-dex-stage-gala.gala.com/v1/CreateHeadlessWallet'
-  );
-  message.value = `Wallet Generated and registered. Address: ${wallet.ethAddress}.\n Private key in console (this is not super secure, please only use this for testing)`;
-  console.log(wallet.privateKey);
-}
-
-async function createTokenClass() {
-  const foo = await tokenClient.CreateTokenClass({
-    name: 'test',
-    description: 'test2',
-    image: 'foo.png',
-    symbol: 'foo',
-    tokenClass: {
-      additionalKey: 'key',
-      category: 'category',
-      collection: 'colection',
-      type: 'type'
-    }
-  });
-  return foo;
-}
-
-async function getBalances() {
-  const user = connectedUser.value;
-  if (!isConnected.value || !user) {
+async function wrapAndCallMethod(
+  method: (message: Ref<string>) => Promise<GalaChainResponse<any> | string>,
+  message: Ref<string>
+) {
+  if (!isConnected) {
     message.value = 'Please connect to MetaMask first.';
     return;
   }
-
-  try {
-    let res = await tokenClient.FetchBalances({
-      owner: user
-    });
-    if (res.Data) {
-      message.value = JSON.stringify(res.Data);
+  const result = await method(message);
+  if (typeof result === 'object') {
+    if (result.Status === 1) {
+      message.value = `Success! ${JSON.stringify(result.Data)}`;
     } else {
-      message.value = `Error fetching balances. ${res.Message}`;
+      message.value = `Error. Code: ${result.ErrorCode}, ${result.Message}`;
     }
-  } catch (error) {
-    message.value = 'Failed to get balances!';
-    console.error(error);
   }
+
+  return;
 }
-
-async function transferToken() {
-  if (!isConnected.value) {
-    message.value = 'Please connect to MetaMask first.';
-    return;
-  }
-  //TODO
-}
-
-async function lockToken() {
-  if (!isConnected.value) {
-    message.value = 'Please connect to MetaMask first.';
-    return;
-  }
-
-  try {
-    let res = await tokenClient.LockToken({
-      quantity: '1',
-      tokenInstance: {
-        collection: 'GALA',
-        category: 'Unit',
-        additionalKey: 'none',
-        instance: '0',
-        type: 'none'
+const rows = ref<Row[]>([
+  {
+    title: 'Token Class Methods',
+    buttons: [
+      {
+        name: 'Create Token Class',
+        methodToCall: () => wrapAndCallMethod(createTokenClass, message)
+      },
+      {
+        name: 'Update Token Class',
+        methodToCall: () => wrapAndCallMethod(updateTokenClass, message)
+      },
+      {
+        name: 'Fetch Token Classes',
+        methodToCall: () => wrapAndCallMethod(fetchTokenClasses, message)
+      },
+      {
+        name: 'Fetch Token Classes (Paginated)',
+        methodToCall: () => wrapAndCallMethod(fetchTokenClassesWithPagination, message)
       }
-    });
-    if (res.Status === 1) {
-      message.value = `Token locked successfully! ${JSON.stringify(res.Data)}`;
-    } else {
-      message.value = `Error locking token. Code: ${res.ErrorCode}, ${res.Message}`;
-    }
-  } catch (error) {
-    message.value = 'Failed to lock the token!';
-    console.error(error);
+    ]
+  },
+  {
+    title: 'Token Management',
+    buttons: [
+      {
+        name: 'Get Balances',
+        methodToCall: () => wrapAndCallMethod(fetchBalances, message)
+      },
+      {
+        name: 'Burn Token',
+        methodToCall: () => wrapAndCallMethod(burnTokens, message)
+      },
+      {
+        name: 'Request Mint',
+        methodToCall: () => wrapAndCallMethod(requestMint, message)
+      },
+      {
+        name: 'Mint Token',
+        methodToCall: () => wrapAndCallMethod(mintToken, message)
+      },
+      {
+        name: 'Mint Token With Allowance',
+        methodToCall: () => wrapAndCallMethod(mintTokenWithAllowance, message)
+      },
+      {
+        name: 'Batch Mint Token',
+        methodToCall: () => wrapAndCallMethod(batchMintToken, message)
+      },
+      {
+        name: 'High Throughput Mint',
+        methodToCall: () => wrapAndCallMethod(highThroughputMint, message)
+      },
+      {
+        name: 'Fetch Mint Requests',
+        methodToCall: () => wrapAndCallMethod(fetchMintRequests, message)
+      }
+      // {
+      //   name: 'Transfer Token',
+      //   methodToCall: () => wrapAndCallMethod(tra, message)
+      // }
+    ]
+  },
+  {
+    title: 'Lock/Unlock Tokens',
+    buttons: [
+      {
+        name: 'Lock Token',
+        methodToCall: () => wrapAndCallMethod(lockToken, message)
+      },
+      {
+        name: 'Lock Tokens',
+        methodToCall: () => wrapAndCallMethod(lockTokens, message)
+      },
+      {
+        name: 'Unlock Token',
+        methodToCall: () => wrapAndCallMethod(unlockToken, message)
+      },
+      {
+        name: 'Unlock Tokens',
+        methodToCall: () => wrapAndCallMethod(unlockTokens, message)
+      }
+    ]
+  },
+  {
+    title: 'Allowance Methods',
+    buttons: [
+      {
+        name: 'Full Allowance Check',
+        methodToCall: () => wrapAndCallMethod(fullAllowanceCheck, message)
+      }
+    ]
+  },
+  {
+    title: 'Allowance Methods Requiring Other Wallet',
+    guard: 'newWalletCreated',
+    buttons: [
+      {
+        name: 'Grant Allowance',
+        methodToCall: () => wrapAndCallMethod(grantAllowance, message)
+      },
+      {
+        name: 'Refresh Allowance',
+        methodToCall: () => wrapAndCallMethod(refreshAllowances, message)
+      },
+      {
+        name: 'Full Allowance Check',
+        methodToCall: () => wrapAndCallMethod(fullAllowanceCheck, message)
+      },
+      {
+        name: 'Fetch Allowances',
+        methodToCall: () => wrapAndCallMethod(fetchAllowances, message)
+      },
+      {
+        name: 'Delete Allowances',
+        methodToCall: () => wrapAndCallMethod(deleteAllowances, message)
+      },
+      {
+        name: 'Fetch Allowances',
+        methodToCall: () => wrapAndCallMethod(fetchAllowances, message)
+      },
+      {
+        name: 'Delete Allowances',
+        methodToCall: () => wrapAndCallMethod(deleteAllowances, message)
+      }
+    ]
+  },
+  {
+    title: 'Public Key Methods',
+    buttons: [
+      { name: 'Get Profile', methodToCall: () => wrapAndCallMethod(getProfile, message) },
+      { name: 'Register User', methodToCall: () => wrapAndCallMethod(registerUser, message) },
+      { name: 'Register Eth User', methodToCall: () => wrapAndCallMethod(registerEthUser, message) }
+    ]
   }
-}
-async function burnToken() {
-  if (!isConnected.value) {
-    message.value = 'Please connect to MetaMask first.';
-    return;
-  }
+]);
 
-  try {
-    //todo: this should default to the selected user, not this
-    let test = await tokenClient.BurnTokens({
-      tokenInstances: [
-        {
-          quantity: '1',
-          tokenInstanceKey: {
-            collection: 'GALA',
-            category: 'Unit',
-            additionalKey: 'none',
-            instance: '0',
-            type: 'none'
-          }
+const getError = (rowInfo: Row) => {
+  if (rowInfo.guard) {
+    switch (rowInfo.guard) {
+      case 'newWalletCreated':
+        if (!createdUser.value) {
+          return 'Please create a new wallet before using this row.';
         }
-      ]
-    });
-    message.value = `Token locked successfully! ${JSON.stringify(test.Data)}`;
-  } catch (error) {
-    message.value = 'Failed to lock the token!';
-    console.error(error);
+    }
   }
-}
+  return false;
+};
 </script>
 
 <template>
-  <div>
-    <button @click="connectToMetaMask">Connect to MetaMask</button>
-    <button @click="generateWallet">Generate Wallet</button>
-    <button @click="getBalances" :disabled="!isConnected">Get Balances</button>
-    <button @click="lockToken" :disabled="!isConnected">Lock Token</button>
-    <button @click="burnToken" :disabled="!isConnected">Burn Token</button>
-    <button @click="createTokenClass" :disabled="!isConnected">Generate Class</button>
-    <p>{{ message }}</p>
+  <button @click="connectToMetaMask" v-if="!isConnected()">Connect to MetaMask</button>
+  <button @click="generateWallet" v-if="!!isConnected()">Generate Wallet</button>
+  <p v-if="createdUser">Generated Wallet Address: {{ createdUser }}</p>
+  <div class="container">
+    <div v-for="(row, rowIndex) in rows" :key="rowIndex" class="row-item">
+      <h3>{{ row.title }}</h3>
+      <p v-if="!!getError(row)" class="tooltip">{{ getError(row) }}</p>
+      <div class="item">
+        <div v-for="(button, buttonIndex) in row.buttons" :key="buttonIndex">
+          <button
+            class="btn"
+            @click="button.methodToCall"
+            :disabled="!isConnected() || !!getError(row)"
+          >
+            {{ button.name }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
+  <div v-if="message">{{ message }}</div>
 </template>
+
+<style scoped>
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 40px;
+}
+
+.row-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 10px;
+  border: 1px solid #ccc;
+  background-color: #f0f0f0;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background-color: #ddd;
+}
+
+h3 {
+  margin: 0;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+</style>
