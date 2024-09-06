@@ -1,18 +1,17 @@
-import { AllowanceKey, AllowanceType, TokenBalanceWithMetadata, TokenClassKey, type ConstructorArgs, type FetchTokenClassesResponseBody, type GalaChainResponse, type TokenBalanceBody, type TokenBurnBody, type TokenClassBody, type TokenClassKeyBody, type TokenInstanceKeyBody } from '@gala-chain/api';
-import { MetamaskConnectClient, GalachainClient, WalletUtils } from '@gala-chain/connect';
-import { ref, type Ref } from 'vue';
-import type { FetchBalancesWithTokenMetadataBody } from '../../../../sdk/chain-api/lib/src';
+import { AllowanceType, type CreateTokenClassParams, type TokenClassKeyBody, type TokenInstanceKeyBody } from '@gala-chain/api';
+import { MetamaskConnectClient, WalletUtils } from '@gala-chain/connect';
+import { ref } from 'vue';
 
 
-const tokenContract = new MetamaskConnectClient(
-    'https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/token-contract'
-);
-const publicKeyContract = new MetamaskConnectClient(
-    'https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/public-key-contract'
-);
+// const tokenClient = new MetamaskConnectClient(
+//     'https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/token-contract'
+// );
+// const publicKeyClient = new MetamaskConnectClient(
+//     'https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/public-key-contract'
+// );
 
-const tokenClient = new GalachainClient(tokenContract);
-const publicKeyClient = new GalachainClient(publicKeyContract);
+const tokenClient = new MetamaskConnectClient('http://localhost:3001/asset/GalaChainToken');
+const publicKeyClient = new MetamaskConnectClient('http://localhost:3001/asset/token-contract');
 
 export const message = ref('');
 export const connectedUser = ref<string | null>(null);
@@ -22,7 +21,16 @@ const arbitraryToken: TokenClassKeyBody = {
     additionalKey: 'fakeTokenKey',
     category: 'fakeCategory',
     collection: 'fakeCollection',
-    type: 'fakeType'
+    type: 'fakeType',
+}
+
+const arbitraryTokenData: CreateTokenClassParams = {
+    tokenClass: arbitraryToken,
+    description: "this is a description",
+    image: "shrek.png",
+    name: "Foo",
+    symbol: "foo",
+    maxSupply: "100000",
 }
 
 const arbitraryTokenInstance: TokenInstanceKeyBody = { ...arbitraryToken, instance: '0' }
@@ -43,19 +51,19 @@ export const isConnected = () => {
 
 export async function connectToMetaMask() {
     try {
-
-        const connectionResult = await tokenContract.connect();
-        const connectionResult2 = await publicKeyContract.connect();
+        const connectionResult = await tokenClient.connect();
+        const connectionResult2 = await publicKeyClient.connect();
         message.value = `Connected! User: ${connectionResult}`;
         connectedUser.value = connectionResult;
 
+
         // Listening to account changes
-        tokenContract.on('accountChanged', (account: string | null) => {
+        tokenClient.on('accountChanged', (account: string | null) => {
             console.log(`Account changed, ${account}`);
             message.value = `Account Changed! User: ${account}`;
             connectedUser.value = account;
         });
-        publicKeyContract.on('accountChanged', (account: string | null) => {
+        publicKeyClient.on('accountChanged', (account: string | null) => {
             console.log(`Account changed, ${account}`);
             message.value = `Account Changed! User: ${account}`;
             connectedUser.value = account;
@@ -65,6 +73,7 @@ export async function connectToMetaMask() {
         console.error(error);
     }
 }
+
 
 export async function generateWallet() {
     try {
@@ -80,41 +89,20 @@ export async function generateWallet() {
     }
 }
 
-export async function createTokenClass(): Promise<GalaChainResponse<any>> {
-    return tokenClient.CreateTokenClass({
-        name: 'test',
-        description: 'test2',
-        image: 'foo.png',
-        symbol: 'foo',
-        tokenClass: {
-            additionalKey: 'key',
-            category: 'category',
-            collection: 'collection',
-            type: 'type',
-        },
-        maxSupply: '1',
-    });
+export async function createTokenClass() {
+    return tokenClient.CreateTokenClass(
+        arbitraryTokenData
+    );
 
 }
 
 
 
-export function updateTokenClass(): Promise<GalaChainResponse<any>> {
-    return tokenClient.UpdateTokenClass({
-        name: 'test',
-        description: 'test1234',
-        image: 'foo.png',
-        symbol: 'foo',
-        tokenClass: {
-            additionalKey: 'key',
-            category: 'category',
-            collection: 'colection',
-            type: 'type'
-        }
-    });
+export function updateTokenClass() {
+    return tokenClient.UpdateTokenClass({ ...arbitraryTokenData, description: `Description updated at :${new Date()}` });
 }
 
-export function fetchTokenClasses(): Promise<GalaChainResponse<any[]>> {
+export function fetchTokenClasses() {
     return tokenClient.FetchTokenClasses({
         tokenClasses: [
             {
@@ -133,7 +121,7 @@ export function fetchTokenClasses(): Promise<GalaChainResponse<any[]>> {
     });
 }
 
-export function fetchTokenClassesWithPagination(): Promise<GalaChainResponse<any>> {
+export function fetchTokenClassesWithPagination() {
     return tokenClient.FetchTokenClassesWithPagination({
         additionalKey: 'key',
         category: 'category',
@@ -141,42 +129,35 @@ export function fetchTokenClassesWithPagination(): Promise<GalaChainResponse<any
         type: 'type'
     });
 }
-export function grantAllowance(): Promise<GalaChainResponse<any>> {
-    if (!createdUser.value) throw new Error(`Before testing this, please generate a new wallet`);
+export function grantAllowance() {
+    if (!connectedUser.value) throw new Error(`Before testing this, please generate a new wallet`);
+    const user = connectedUser.value;
     return tokenClient.GrantAllowance({
-        tokenInstance: {
-            additionalKey: 'key',
-            category: 'category',
-            collection: 'colection',
-            type: 'type'
-        },
-        quantities: [{ quantity: '1', user: convertToGCAddress(createdUser.value) }],
+        tokenInstance: { ...arbitraryToken, instance: '0' },
+        quantities: [{ quantity: '1', user }],
         allowanceType: AllowanceType.Mint,
-        uses: '1',
+        uses: '1000',
     });
 }
 
-export function fullAllowanceCheck(): Promise<GalaChainResponse<any>> {
+export function fullAllowanceCheck() {
     return tokenClient.FullAllowanceCheck({
         additionalKey: 'key',
         category: 'category',
         collection: 'colection',
-        type: 'type'
-    });
-}
-
-export function fetchAllowances(): Promise<GalaChainResponse<any>> {
-    if (!createdUser.value) throw new Error(`Before testing this, please generate a new wallet`);
-    return tokenClient.FetchAllowances({
-        additionalKey: 'key',
-        category: 'category',
-        collection: 'colection',
         type: 'type',
-        grantedTo: createdUser.value
     });
 }
 
-export function deleteAllowances(): Promise<GalaChainResponse<any>> {
+export function fetchAllowances() {
+    if (!connectedUser.value) throw new Error(`Before testing this, please generate a new wallet`);
+    const user = connectedUser.value;
+    return tokenClient.FetchAllowances({
+        grantedTo: user
+    });
+}
+
+export function deleteAllowances() {
     if (!createdUser.value) throw new Error(`Before testing this, please generate a new wallet`);
     return tokenClient.DeleteAllowances({
         additionalKey: 'key',
@@ -188,7 +169,7 @@ export function deleteAllowances(): Promise<GalaChainResponse<any>> {
 }
 
 
-export function refreshAllowances(): Promise<GalaChainResponse<any>> {
+export function refreshAllowances() {
     if (!createdUser.value) throw new Error(`Before testing this, please generate a new wallet`);
     const user = connectedUser.value;
     if (!user) {
@@ -208,7 +189,7 @@ export function refreshAllowances(): Promise<GalaChainResponse<any>> {
     });
 }
 
-export function fetchBalances(): Promise<GalaChainResponse<TokenBalanceBody[]>> {
+export function fetchBalances() {
     const user = connectedUser.value;
     if (!user) {
         throw new Error(`No User!`)
@@ -218,7 +199,7 @@ export function fetchBalances(): Promise<GalaChainResponse<TokenBalanceBody[]>> 
     });
 }
 
-export function fetchBalancesWithTokenMetadata(): Promise<GalaChainResponse<FetchBalancesWithTokenMetadataBody>> {
+export function fetchBalancesWithTokenMetadata() {
     const user = connectedUser.value;
     if (!user) {
         throw new Error(`No User!`)
@@ -238,7 +219,7 @@ export async function transferToken() {
     })
 }
 
-export function lockToken(): Promise<GalaChainResponse<TokenBalanceBody>> {
+export function lockToken() {
     return tokenClient.LockToken({
         quantity: '1',
         tokenInstance: {
@@ -251,15 +232,15 @@ export function lockToken(): Promise<GalaChainResponse<TokenBalanceBody>> {
     });
 }
 
-export function lockTokens(): Promise<GalaChainResponse<any>> {
+export function lockTokens() {
     return tokenClient.LockTokens({
         tokenInstances: [{ tokenInstanceKey: arbitraryTokenInstance, quantity: '1' },
         { tokenInstanceKey: arbitraryTokenInstance, quantity: '1' }]
     });
 }
-export function unlockToken(): Promise<GalaChainResponse<any>> {
+export function unlockToken() {
     return tokenClient.UnlockToken({
-        quantity: '1',
+        quantity: '1' as any,
         tokenInstance: {
             collection: 'GALA',
             category: 'Unit',
@@ -270,14 +251,14 @@ export function unlockToken(): Promise<GalaChainResponse<any>> {
     });
 }
 
-export function unlockTokens(): Promise<GalaChainResponse<any>> {
+export function unlockTokens() {
     return tokenClient.UnlockTokens({
         tokenInstances: [{ tokenInstanceKey: arbitraryTokenInstance, quantity: '1' },
         { tokenInstanceKey: arbitraryTokenInstance, quantity: '1' }]
     });
 }
 
-export function burnTokens(): Promise<GalaChainResponse<any>> {
+export function burnTokens() {
     return tokenClient.BurnTokens({
         tokenInstances: [
             {
@@ -294,7 +275,7 @@ export function burnTokens(): Promise<GalaChainResponse<any>> {
     });
 }
 
-export function fetchBurns(): Promise<GalaChainResponse<any>> {
+export function fetchBurns() {
     const user = connectedUser.value;
     if (!user) {
         throw new Error(`No User!`)
@@ -306,7 +287,7 @@ export function fetchBurns(): Promise<GalaChainResponse<any>> {
 
 
 
-export function requestMint(): Promise<GalaChainResponse<any>> {
+export function requestMint() {
     return tokenClient.RequestMint({
         tokenClass: {
             collection: 'GALA',
@@ -324,14 +305,14 @@ export function requestMint(): Promise<GalaChainResponse<any>> {
 
 // }
 
-export function highThroughputMint(): Promise<GalaChainResponse<any>> {
+export function highThroughputMint() {
     return tokenClient.HighThroughputMint({
         quantity: '1',
         tokenClass: arbitraryToken
     });
 }
 
-export function fetchMintRequests(): Promise<GalaChainResponse<any>> {
+export function fetchMintRequests() {
     const oneMonthAgo = new Date(new Date().setMonth(new Date().getMonth() - 1)).getTime();
 
     return tokenClient.FetchMintRequests({
@@ -341,7 +322,7 @@ export function fetchMintRequests(): Promise<GalaChainResponse<any>> {
     });
 }
 
-export function mintToken(): Promise<GalaChainResponse<any>> {
+export function mintToken() {
     return tokenClient.MintToken({
         ...arbitraryToken,
         quantity: '1',
@@ -350,7 +331,7 @@ export function mintToken(): Promise<GalaChainResponse<any>> {
 }
 
 
-export function mintTokenWithAllowance(): Promise<GalaChainResponse<any>> {
+export function mintTokenWithAllowance() {
     return tokenClient.MintToken({
         ...arbitraryToken,
         quantity: '1',
@@ -359,7 +340,7 @@ export function mintTokenWithAllowance(): Promise<GalaChainResponse<any>> {
 }
 
 
-export function batchMintToken(): Promise<GalaChainResponse<any>> {
+export function batchMintToken() {
     return tokenClient.BatchMintToken({
         mintDtos: [{
             ...arbitraryToken,
@@ -385,14 +366,25 @@ export function batchMintToken(): Promise<GalaChainResponse<any>> {
 // }
 
 
-export function releaseToken(): Promise<GalaChainResponse<any>> {
+export function releaseToken() {
     return tokenClient.ReleaseToken({
         tokenInstance: arbitraryTokenInstance
     });
 }
 
-export function getProfile() {
-    return publicKeyClient.GetMyProfile() as any;
+// export function getProfile() {
+//     return publicKeyClient.GetMyProfile() as any;
+// }
+
+// Sign a message and recover the public key
+export async function registerSelf() {
+    // Step 1: Sign the message
+    const signature = await tokenClient.getPublicKey();
+    console.log("Recovered Public Key:", signature.publicKey);
+    console.log("Recovered Address from Public Key:", signature.recoveredAddress);
+
+    const result = await fetch(`http://localhost:3001/registerself/${signature.publicKey}`, { method: 'POST' });
+    return result;
 }
 
 export function registerUser() {

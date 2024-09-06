@@ -29,7 +29,7 @@ import {
   lockTokens,
   unlockToken,
   unlockTokens,
-  getProfile,
+  registerSelf,
   registerUser,
   registerEthUser
 } from './services/ExampleMetamask';
@@ -108,6 +108,10 @@ const rows = ref<Row[]>([
         methodToCall: () => wrapAndCallMethod(mintToken, message)
       },
       {
+        name: 'Grant Allowance',
+        methodToCall: () => wrapAndCallMethod(grantAllowance, message)
+      },
+      {
         name: 'Mint Token With Allowance',
         methodToCall: () => wrapAndCallMethod(mintTokenWithAllowance, message)
       },
@@ -156,6 +160,10 @@ const rows = ref<Row[]>([
       {
         name: 'Full Allowance Check',
         methodToCall: () => wrapAndCallMethod(fullAllowanceCheck, message)
+      },
+      {
+        name: 'Fetch Allowances',
+        methodToCall: () => wrapAndCallMethod(fetchAllowances, message)
       }
     ]
   },
@@ -164,10 +172,6 @@ const rows = ref<Row[]>([
     guard: 'newWalletCreated',
     buttons: [
       {
-        name: 'Grant Allowance',
-        methodToCall: () => wrapAndCallMethod(grantAllowance, message)
-      },
-      {
         name: 'Refresh Allowance',
         methodToCall: () => wrapAndCallMethod(refreshAllowances, message)
       },
@@ -175,10 +179,7 @@ const rows = ref<Row[]>([
         name: 'Full Allowance Check',
         methodToCall: () => wrapAndCallMethod(fullAllowanceCheck, message)
       },
-      {
-        name: 'Fetch Allowances',
-        methodToCall: () => wrapAndCallMethod(fetchAllowances, message)
-      },
+
       {
         name: 'Delete Allowances',
         methodToCall: () => wrapAndCallMethod(deleteAllowances, message)
@@ -196,7 +197,7 @@ const rows = ref<Row[]>([
   {
     title: 'Public Key Methods',
     buttons: [
-      { name: 'Get Profile', methodToCall: () => wrapAndCallMethod(getProfile, message) },
+      // { name: 'Get Profile', methodToCall: () => wrapAndCallMethod(getProfile, message) },
       { name: 'Register User', methodToCall: () => wrapAndCallMethod(registerUser, message) },
       { name: 'Register Eth User', methodToCall: () => wrapAndCallMethod(registerEthUser, message) }
     ]
@@ -219,6 +220,7 @@ const getError = (rowInfo: Row) => {
 <template>
   <button @click="connectToMetaMask" v-if="!isConnected()">Connect to MetaMask</button>
   <button @click="generateWallet" v-if="!!isConnected()">Generate Wallet</button>
+  <button @click="registerSelf" v-if="!!isConnected()">Register Self</button>
   <p v-if="createdUser">Generated Wallet Address: {{ createdUser }}</p>
   <div class="container">
     <div v-for="(row, rowIndex) in rows" :key="rowIndex" class="row-item">
