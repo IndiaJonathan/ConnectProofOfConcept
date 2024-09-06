@@ -1,5 +1,5 @@
 import { AllowanceType, type CreateTokenClassParams, type TokenClassKeyBody, type TokenInstanceKeyBody } from '@gala-chain/api';
-import { MetamaskConnectClient, WalletUtils } from '@gala-chain/connect';
+import { MetamaskConnectClient, PublicKeyApi, TokenApi, WalletUtils } from '@gala-chain/connect';
 import { ref } from 'vue';
 
 
@@ -10,8 +10,10 @@ import { ref } from 'vue';
 //     'https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/public-key-contract'
 // );
 
-const tokenClient = new MetamaskConnectClient('http://localhost:3001/asset/GalaChainToken');
-const publicKeyClient = new MetamaskConnectClient('http://localhost:3001/asset/token-contract');
+const metamastClient = new MetamaskConnectClient();
+const tokenClient = new TokenApi('http://localhost:3001/asset/GalaChainToken', metamastClient);
+const publicKeyClient = new PublicKeyApi('http://localhost:3001/asset/token-contract', metamastClient);
+// const appleclient = new MetamaskConnectClient('http://localhost:3001/asset/AppleContract');
 
 export const message = ref('');
 export const connectedUser = ref<string | null>(null);
@@ -51,19 +53,13 @@ export const isConnected = () => {
 
 export async function connectToMetaMask() {
     try {
-        const connectionResult = await tokenClient.connect();
-        const connectionResult2 = await publicKeyClient.connect();
+        const connectionResult = await metamastClient.connect();
         message.value = `Connected! User: ${connectionResult}`;
         connectedUser.value = connectionResult;
 
 
         // Listening to account changes
-        tokenClient.on('accountChanged', (account: string | null) => {
-            console.log(`Account changed, ${account}`);
-            message.value = `Account Changed! User: ${account}`;
-            connectedUser.value = account;
-        });
-        publicKeyClient.on('accountChanged', (account: string | null) => {
+        metamastClient.on('accountChanged', (account: string | null) => {
             console.log(`Account changed, ${account}`);
             message.value = `Account Changed! User: ${account}`;
             connectedUser.value = account;
@@ -148,6 +144,10 @@ export function fullAllowanceCheck() {
         type: 'type',
     });
 }
+
+// export function plantTree(){
+//     return appleclient.plant
+// }
 
 export function fetchAllowances() {
     if (!connectedUser.value) throw new Error(`Before testing this, please generate a new wallet`);
@@ -379,7 +379,7 @@ export function releaseToken() {
 // Sign a message and recover the public key
 export async function registerSelf() {
     // Step 1: Sign the message
-    const signature = await tokenClient.getPublicKey();
+    const signature = await metamastClient.getPublicKey();
     console.log("Recovered Public Key:", signature.publicKey);
     console.log("Recovered Address from Public Key:", signature.recoveredAddress);
 
