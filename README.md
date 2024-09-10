@@ -35,3 +35,7 @@ npm run test:unit
 ```sh
 npm run lint
 ```
+
+This application is an example of how to connect to gala and sign transactions using a web3 wallet such as metamask.
+If you want to test it locally with your own version of galachain, please see
+https://github.com/IndiaJonathan/galachain-rest-dynamic
