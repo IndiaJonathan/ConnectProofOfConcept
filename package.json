@@ -14,8 +14,8 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "@gala-chain/api": "^1.2.2",
-    "@gala-chain/connect": "^1.2.2",
+    "@gala-chain/api": "^1.4.2",
+    "@gala-chain/connect": "^1.4.2",
     "ethers": "^6.13.2",
     "pinia": "^2.1.7",
     "vue": "^3.4.29",

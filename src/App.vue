@@ -48,14 +48,14 @@ const message = ref('');
 initialize();
 
 async function wrapAndCallMethod(
-  method: (message: Ref<string>) => Promise<GalaChainResponse<any> | string>,
+  method: (message: Ref<string>) => Promise<GalaChainResponse<any> | string | { status: number }>,
   message: Ref<string>
 ) {
   if (!isConnected) {
     message.value = 'Please connect to MetaMask first.';
     return;
   }
-  const result = await method(message);
+  const result = (await method(message)) as any;
   if (typeof result === 'object') {
     if (result.Status === 1) {
       message.value = `Success! ${JSON.stringify(result.Data)}`;
