@@ -11,8 +11,9 @@ import { ref } from 'vue';
 // );
 
 const metamastClient = new MetamaskConnectClient();
-const tokenClient = new TokenApi('https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/token-contract', metamastClient);
-const publicKeyClient = new PublicKeyApi('http://localhost:3001/asset/token-contract', metamastClient);
+// const tokenClient = new TokenApi('https://galachain-gateway-chain-platform-stage-chain-platform-eks.stage.galachain.com/api/asset/token-contract', metamastClient);
+const tokenClient = new TokenApi('http://localhost:3001/asset/GalaChainToken', metamastClient);
+const publicKeyClient = new PublicKeyApi('http://localhost:3001/asset/PublicKeyContract', metamastClient);
 // const appleclient = new MetamaskConnectClient('http://localhost:3001/asset/AppleContract');
 
 export const message = ref('');
